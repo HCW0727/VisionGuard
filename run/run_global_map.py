@@ -134,6 +134,7 @@ def overlap(org_img,overlap_img,moved_x,moved_z,current_angle):
 
     else:
         overlap_img_final = get_final_mask(overlap_img_no_triangle)
+        
         masked_original = cv2.bitwise_and(img_with_border[changed_z-pre_height:changed_z,
                                         changed_x:changed_x+pre_width],triangle_roi_mask_inv)
         
