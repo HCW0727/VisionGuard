@@ -3,6 +3,12 @@ import numpy as np
 
 current_x = 50
 current_z = 0
+
+##################################################
+# current_x = 51
+# current_z = 318
+# current_angle = 1
+##################################################
 global_map = cv2.imread('global_map.png',cv2.IMREAD_GRAYSCALE)
 # current_angle = 0
 
@@ -51,6 +57,7 @@ def rotate_img(img,angle):
 
 def overlap(org_img,overlap_img,moved_x,moved_z,current_angle):
     global current_x,current_z,global_map #,current_angle
+
     current_x += moved_x
     current_z += moved_z
 
@@ -152,7 +159,6 @@ def overlap(org_img,overlap_img,moved_x,moved_z,current_angle):
     _, res_mask = cv2.threshold(img_with_border, 100, 255, cv2.THRESH_BINARY)
     _, global_map_mask = cv2.threshold(global_map, 100, 255, cv2.THRESH_BINARY)
 
-    print(res_mask.shape)
     res_img = cv2.bitwise_or(res_mask,global_map_mask)
     res_img[res_img==255] = 130
 

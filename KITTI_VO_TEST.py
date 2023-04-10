@@ -34,7 +34,11 @@ first_img = file_list[0]
 
 current_angle = 0
 
+# file_list = file_list[82:]
+
+
 for img_dir in file_list:
+    
     st = time.time()
     ##################################################
     #image input
@@ -60,19 +64,23 @@ for img_dir in file_list:
 
     ##################################################
     #BEV to global map (STEREO VISUAL ODOMETRY), PathFinding
-    if img_dir == first_img:
+    if img_dir == file_list[0]:
         images_prev = images_curr
 
-        global_map_org = cv2.imread('global_map.png',cv2.IMREAD_GRAYSCALE)
+        global_map_org = cv2.imread('pathfinding/global_map.png',cv2.IMREAD_GRAYSCALE)
         global_map = run_global_map.overlap(global_map_org,BEV_image,0,0,0)
 
         #Pathfinding (initial calculation)
         global_map_reduced = run_size.resize_img(global_map_org)
-        dstar = run_pathfinding.DStar(global_map_reduced,start_point,goal_point,"euclidean")
+        dstar = run_pathfinding.DStar(global_map_reduced,start_point,goal_point,"octile_distance")
         path = dstar.run()
+        
 
     else:
+        
         moved_x,moved_z,rotated_angle = run_visual_odometry.run_VO(images_prev,images_curr)
+
+        print('RA',rotated_angle)
         rotated_angle *= -1
         images_prev = images_curr
 
@@ -99,16 +107,18 @@ for img_dir in file_list:
         ##################################################
         #PathFinding (on_change)
 
+        
         global_map_reduced = run_size.resize_img(global_map)
 
-        st2 = time.time()
+        # st2 = time.time()
+        
         path = dstar.on_change(global_map_reduced)
-        print('PFtime',time.time()-st2)
+        # print('PFtime',time.time()-st2)
     
     
     ##################################################
     #image output
-    global_map_reduced_draw = global_map_reduced.copy()
+    global_map_reduced_draw = global_map_reduced.copy() 
     for px,py in path:
         global_map_reduced_draw[py,px] = 255
 
@@ -126,13 +136,13 @@ for img_dir in file_list:
     if file_num % 10 == 0:
         cv2.imwrite('./output/global_map/'+img_dir,global_map)   
 
-    cv2.namedWindow('BEV',cv2.WINDOW_NORMAL)
+    # cv2.namedWindow('BEV',cv2.WINDOW_NORMAL)
     # cv2.imshow('BEV',BEV_image)
 
-    cv2.resizeWindow('BEV',400,400)
+    # cv2.resizeWindow('BEV',400,400)
 
     cv2.imshow('global_map',global_map_draw)
-    cv2.imshow('global_map_reduced',global_map_reduced_draw)
+    # cv2.imshow('global_map_reduced',global_map_reduced_draw)
     # cv2.imshow('left',left)
     # cv2.imshow('right',right) 
     # cv2.imshow('disparity',disp)
@@ -141,7 +151,7 @@ for img_dir in file_list:
 
     if k == ord('s'):
         cv2.imwrite('global_map.png',global_map)
-        print('global map saved!!')
+        print('global map saved')
 
     if k == 27:
         break

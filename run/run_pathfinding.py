@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np, cv2
 import time
 
-#setting initial value of previous_img
+#setting atial value of previous_img
 previous_img = [0,0]
 
 
@@ -76,7 +76,6 @@ class DStar:
         self.img_map = img_map
         self.img_pad = run_PAD(img_map)
 
-        cv2.imshow('img_pad',self.img_pad)
         img_gap = self.img_map.astype(np.int16) - self.previous_img.astype(np.int16)
 
         # self.previous_img[148,4] = 0
@@ -114,30 +113,40 @@ class DStar:
         self.visited = set()
         self.ComputePath()
 
-
-
+        visited = set()
         while s_curr != self.s_goal:
+            visited.add(s_curr)
             s_list = {}
-
             for s in self.get_neighbor(s_curr):
-                s_list[s] = self.g[s] + self.cost(s_curr, s)
+                if s not in visited:
+                    s_list[s] = self.g[s] + self.cost(s_curr, s)
             s_curr = min(s_list, key=s_list.get)
             path.append(s_curr)
 
         # self.plot_path(path)
 
+        
+
         return path
 
     def ComputePath(self):
-        while True:
+        st = time.time()
+        count = 0
+        max_iterations = 10000  # 최대 반복 횟수를 설정
+
+        self.visited = set()
+
+        while count < max_iterations:
+            count += 1
             s, v = self.TopKey()
+
+
             if v >= self.CalculateKey(self.s_start) and \
                     self.rhs[self.s_start] == self.g[self.s_start]:
                 break
 
             k_old = v
             self.U.pop(s)
-            self.visited.add(s)
 
             if k_old < self.CalculateKey(s):
                 self.U[s] = self.CalculateKey(s)
@@ -152,6 +161,7 @@ class DStar:
                     self.UpdateVertex(x)
 
     def UpdateVertex(self, s):
+        
         if s != self.s_goal:
             self.rhs[s] = float("inf")
             for x in self.get_neighbor(s):
@@ -176,11 +186,16 @@ class DStar:
 
     def h(self, s_start, s_goal):
         heuristic_type = self.heuristic_type  # heuristic type
-
         if heuristic_type == "manhattan":
             return abs(s_goal[0] - s_start[0]) + abs(s_goal[1] - s_start[1])
+        elif heuristic_type == 'octile_distance':
+            dx = abs(s_start[0] - s_goal[0])
+            dy = abs(s_start[1] - s_goal[1])
+
+            return dx + dy + (math.sqrt(2) - 2) * min(dx, dy)
         else:
             return math.hypot(s_goal[0] - s_start[0], s_goal[1] - s_start[1])
+
 
     def cost(self, s_start, s_goal):
         """
@@ -198,6 +213,8 @@ class DStar:
         bias = math.hypot(s_goal[0] - s_start[0], s_goal[1] - s_start[1])
         s_movement = np.array(s_start) - np.array(s_goal)
 
+        return self.img_pad[s_goal[1],s_goal[0]]/3 + bias
+
         if s_movement[0] == 0 or s_movement[1] == 0:
             return self.img_pad[s_goal[1],s_goal[0]]/3 + bias
         
@@ -213,9 +230,8 @@ class DStar:
 
 
             return min(math.hypot(self.img_pad[s1[1],s1[0]],self.img_pad[s_goal[1],s_goal[0]]),math.hypot(self.img_pad[s2[1],s2[0]],self.img_pad[s_goal[1],s_goal[0]]))/3 + bias
-        
-
-        return math.hypot(s_goal[0] - s_start[0], s_goal[1] - s_start[1])
+            # return self.img_pad[s_goal[1],s_goal[0]]/3 + bias
+    
 
     def is_collision(self, s_start, s_end):
         if s_start in self.obs or s_end in self.obs:
@@ -238,7 +254,7 @@ class DStar:
         nei_list = set()
         for u in self.u_set:
             s_next = tuple([s[i] + u[i] for i in range(2)])
-            if s_next not in self.obs:
+            if s_next not in self.obs and s_next:
                 if 0 <= s_next[0] < self.Env.x_range and 0 <= s_next[1] < self.Env.y_range:
                     nei_list.add(s_next)
 
