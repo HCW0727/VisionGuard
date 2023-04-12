@@ -9,10 +9,12 @@ import numpy as np
 import argparse
 import time
 
-from run import run_CGI_STEREO,run_disparity2bev,run_global_map
-from run import run_visual_odometry, run_pathfinding, run_size
+from run import run_CGI_STEREO,run_disparity2bev,run_global_map, run_size
+from run import run_visual_odometry, run_pathfinding, run_user_control
 
 
+##################################################
+#Fixed Parameters
 
 root_dir_l = '/Users/huhchaewon/Datasets/00/image_2/'
 root_dir_r = '/Users/huhchaewon/Datasets/00/image_3/'
@@ -23,26 +25,35 @@ file_list.sort()
 one_px = 0.33
 
 ##################################################
-#Value
+#Pathfinding Value
 
 start_point = (45//3, 561//3)
 goal_point = (381//3, 45//3)
- 
-##################################################
 
-first_img = file_list[0]
+
+#Localization Value
 
 current_angle = 0
+current_x = 50
+current_z = 0
 
-# file_list = file_list[82:]
+#Initial Value
+First_run = True
+global_map = cv2.imread('pathfinding/global_map.png',cv2.IMREAD_GRAYSCALE)
 
+##################################################
 
 for img_dir in file_list:
     
-    st = time.time()
+    #Calculate time to use in velocity calcualation
+    if First_run:
+        time_gap = float('inf')
+    else:
+        time_gap = res_time - start_time
+    
+    start_time = time.time()
     ##################################################
     #image input
-    start_time = time.time()
 
     file_num = int(img_dir[:-4])
     file_name = img_dir
@@ -64,23 +75,18 @@ for img_dir in file_list:
 
     ##################################################
     #BEV to global map (STEREO VISUAL ODOMETRY), PathFinding
-    if img_dir == file_list[0]:
+    if First_run:
         images_prev = images_curr
-
-        global_map_org = cv2.imread('pathfinding/global_map.png',cv2.IMREAD_GRAYSCALE)
-        global_map = run_global_map.overlap(global_map_org,BEV_image,0,0,0)
+        global_map = run_global_map.overlap(global_map,BEV_image,current_x,current_z,0)
 
         #Pathfinding (initial calculation)
-        global_map_reduced = run_size.resize_img(global_map_org)
+        global_map_reduced = run_size.resize_img(global_map)
         dstar = run_pathfinding.DStar(global_map_reduced,start_point,goal_point,"octile_distance")
         path = dstar.run()
-        
 
     else:
-        
         moved_x,moved_z,rotated_angle = run_visual_odometry.run_VO(images_prev,images_curr)
 
-        print('RA',rotated_angle)
         rotated_angle *= -1
         images_prev = images_curr
 
@@ -95,38 +101,43 @@ for img_dir in file_list:
 
         moved_x,moved_z = output_vec[0][0], output_vec[2][0]
 
-        moved_x,moved_z = moved_x/one_px,moved_z/one_px
+        px_moved_x,px_moved_z = moved_x/one_px,moved_z/one_px
 
         current_angle += rotated_angle
 
-        moved_x,moved_z,current_angle = round(moved_x),round(moved_z),round(current_angle)
+        current_x += px_moved_x
+        current_z += px_moved_z
 
+        current_x,current_z,current_angle = round(current_x),round(current_z),round(current_angle)
 
-        global_map = run_global_map.overlap(global_map,BEV_image,moved_x,moved_z,current_angle)
+        global_map = run_global_map.overlap(global_map,BEV_image,current_x,current_z,current_angle)
 
         ##################################################
         #PathFinding (on_change)
 
-        
         global_map_reduced = run_size.resize_img(global_map)
-
-        # st2 = time.time()
         
         path = dstar.on_change(global_map_reduced)
-        # print('PFtime',time.time()-st2)
-    
-    
+     
     ##################################################
     #image output
-    global_map_reduced_draw = global_map_reduced.copy() 
-    for px,py in path:
-        global_map_reduced_draw[py,px] = 255
 
     global_map_draw = global_map.copy()
-    for px,py in run_size.expand_path(path):
-        global_map_draw[py,px] = 255
+    global_map_draw = cv2.cvtColor(global_map_draw,cv2.COLOR_GRAY2RGB)
 
-    print('time : ',time.time()-st)
+    final_path = run_size.expand_path(path)
+    for px,py in final_path:
+        global_map_draw[py,px] = (255,255,255)
+
+    draw_z = global_map_draw.shape[0] - current_z
+    global_map_draw[draw_z-2:draw_z+3,current_x-2:current_x+3] = (255,255,0)
+
+    if First_run == False:
+
+        velo_x,velo_z = moved_x/time_gap, moved_z/time_gap
+        movement_angle = run_user_control.run_UC([current_x,current_z],[velo_x,velo_z],final_path)
+
+        print('movement_angle : ',movement_angle)
     
     cv2.imwrite('./output/image/disp/'+img_dir,disp)
     cv2.imwrite('./output/image/left/'+img_dir,left)
@@ -148,6 +159,9 @@ for img_dir in file_list:
     # cv2.imshow('disparity',disp)
 
     k = cv2.waitKey(100)
+
+    First_run = False
+    res_time = time.time()
 
     if k == ord('s'):
         cv2.imwrite('global_map.png',global_map)
