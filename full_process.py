@@ -12,7 +12,7 @@ import time
 from run import run_CGI_STEREO,run_disparity2bev, run_visual_odometry
 
 parser = argparse.ArgumentParser(description='(CGI-Stereo) full_process.py')
-parser.add_argument('--mode', default='image', help='select a mode', choices=['image','webcam'])
+parser.add_argument('--mode', default='webcam', help='select a mode', choices=['image','webcam'])
 parser.add_argument('--left_image_path', default='/Users/huhchaewon/Datasets/00/image_2/000001.png', help='left_image path')
 parser.add_argument('--right_image_path', default='/Users/huhchaewon/Datasets/00/image_3/000001.png', help='right_image path')
 
@@ -66,16 +66,14 @@ elif args.mode == 'webcam':
         left_image = frame[:,middle_w:]
         right_image = frame[:,:middle_w]
 
-        disp, left, right = run_CGI_STEREO.run_model(left_image,right_image)
+        left, right,disp = run_CGI_STEREO.run_model(left_image,right_image)
 
-        if previous_left == None:
-            previous_left = left
-        else:
-            print('hello')
+        # if previous_left == None:
+        #     previous_left = left
 
         cv2.imshow('left',left)
         cv2.imshow('right',right)
-        cv2.imshow('disparity',disp)
+        cv2.imshow('disparity',disp*2)
 
         k = cv2.waitKey(100)
 
@@ -86,7 +84,7 @@ elif args.mode == 'webcam':
         cv2.imwrite('./output/webcam/left/left'+str(num)+'.png',left)
         cv2.imwrite('./output/webcam/right/right'+str(num)+'.png',right)
 
-        run_disparity2bev.disp2pcd(disp,'./output/webcam/PCD/point_cloud'+str(num)+'.pcd')
+        # run_disparity2bev.disp2pcd(disp,'./output/webcam/PCD/point_cloud'+str(num)+'.pcd')
 
         num += 1
         print('Total time : ',time.time() - start_time)

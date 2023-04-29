@@ -1,15 +1,15 @@
 import cv2,time
 import numpy as np
 
-current_x = 50
-current_z = 0
+# current_x = 50
+# current_z = 0
 
 ##################################################
 # current_x = 51
 # current_z = 318
 # current_angle = 1
 ##################################################
-global_map = cv2.imread('global_map.png',cv2.IMREAD_GRAYSCALE)
+global_map = cv2.imread('pathfinding/global_map.png',cv2.IMREAD_GRAYSCALE)
 # current_angle = 0
 
 def get_rotated_mask(img):
@@ -55,11 +55,11 @@ def rotate_img(img,angle):
 
     return rotated_img,M
 
-def overlap(org_img,overlap_img,moved_x,moved_z,current_angle):
-    global current_x,current_z,global_map #,current_angle
+def overlap(org_img,overlap_img,current_x,current_z,current_angle):
+    global global_map #,current_angle
 
-    current_x += moved_x
-    current_z += moved_z
+    # current_x += moved_x
+    # current_z += moved_z
 
     # print(round(current_x,2),round(current_z,2),round(current_angle,2))
     # current_angle += moved_angle
@@ -167,14 +167,14 @@ def overlap(org_img,overlap_img,moved_x,moved_z,current_angle):
 
 if __name__ == '__main__':
     start_time = time.time()
-    org_img = cv2.imread('global_map.png', cv2.IMREAD_GRAYSCALE)
+    org_img = cv2.imread('pathfinding/global_map.png', cv2.IMREAD_GRAYSCALE)
 
     # org_img = cv2.imread('./saved_image.png',cv2.IMREAD_GRAYSCALE)
     overlap_img = cv2.imread('./output/image/BEV/000001.png',cv2.IMREAD_GRAYSCALE)
 
     result = overlap(org_img,overlap_img,0,0,0)
 
-    cv2.imshow('overlap_img',overlap_img)
+    
     cv2.imshow('result',result)
     cv2.waitKey(0)
 
